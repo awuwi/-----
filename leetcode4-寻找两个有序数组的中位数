@@ -1,0 +1,25 @@
+题目描述：给定两个大小为 m 和 n 的有序数组 A 和 B。
+请你找出这两个有序数组的中位数，并且要求算法的时间复杂度为 O(log(m + n))。
+你可以假设 A 和 B 不会同时为空。
+思路：只会用O(m+n)方法
+class Solution {
+    public double findMedianSortedArrays(int[] A, int[] B) {
+        int m = A.length;
+        int n = B.length;
+        int len = m + n;
+        int left = -1, right = -1;
+        int aStart = 0, bStart = 0;
+        for (int i = 0; i <= len / 2; i++) {
+            left = right;
+            if (aStart < m && (bStart >= n || A[aStart] < B[bStart])) {
+                right = A[aStart++];
+            } else {
+                right = B[bStart++];
+            }
+        }
+        if ((len & 1) == 0)
+            return (left + right) / 2.0;
+        else
+            return right;
+    }
+}
