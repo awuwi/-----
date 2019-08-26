@@ -1,0 +1,61 @@
+1.Hashmap结构：哈希表是由数组+链表组成的，数组的默认长度为16 。注意 hashtable的数组的默认长度是11。
+
+2.HashMap的存储--put：
+源码：
+int hash = key.hashCode(); // 这个hashCode方法这里不详述,只要理解每个key的hash是一个固定的int值
+int index = hash %（ Entry[].length-1）;
+table[index] = value;//假定存储链表头结点的数组名为table
+
+分析：（百度面试有人遇到过）
+用table[index]表示通过hash值计算出来的、元素需要存储在数组中的位置。
+先判断该位置上有没有存有Entity,没有的话就创建一个Entity<k,v>对象，在该位置上插入，插入结束；
+如果有的话，通过链表的遍历方式去逐个遍历，通过equals方法将key和已有的key进行比较，看看有没有已经存在的key，有的话用新的value替换老的value；
+如果没有，则在table[index]插入该Entity，把原来在table[index]位置上的Entity赋值给新的 Entity的next，
+也即，新的Entity插入（put）的位置永远是在链表的最前面（百度面试），这样插入结束。 
+
+我的理解：
+A.根据hashcode计算出hash值，判断hash值对应的位置有没有Entity，没有的话插入进去；
+B.如果有值了，链表的作用就体现了，通过equals方法判断是不是同一个值，若是，则替换之，value值更新；
+C.若不是，在头结点处，也即数组上，插入该Entity，新的头结点。完成。
+
+注：null key总是存放在Entry[]数组的第一个元素。
+
+问：重写equals方法了一定还需要重写hashcode方法吗？
+答：因为equals相等，那么hashcode值一定相等。
+覆盖了equals方法之后一定要覆盖hashCode方法，原因很简单，比如，String a = new String(“abc”);String b = new String(“abc”);
+如果不覆盖hashCode的话，那么a和b的hashCode就会不同，把这两个类当做key存到HashMap中的话就会出现问题，就会和key的唯一性相矛盾。
+扩展：重写hashcode可以不重写equals方法。
+
+3.HashMap的获取--get：
+先定位到数组元素，再遍历该元素处的链表
+
+源码：
+//第一种：普通使用，二次取值      通过Map.keySet遍历key和value：
+        System.out.println("\n通过Map.keySet遍历key和value：");  
+        for(String key:map.keySet())
+        {
+         System.out.println("Key: "+key+" Value: "+map.get(key));
+        }
+        
+        //第二种：推荐，尤其是容量大时     通过Map.entrySet遍历key和value
+        System.out.println("\n通过Map.entrySet遍历key和value");  
+        for(Map.Entry<String, String> entry: map.entrySet())
+        {
+         System.out.println("Key: "+ entry.getKey()+ " Value: "+entry.getValue());
+        }
+ 
+第三种： 通过Map.values()遍历所有的value，但不能遍历key
+第四种：通过Iterator 遍历Map.entrySet的key和value: 
+第五种：通过iterator 遍历Map.keySet的key和value: 
+
+HashMap扩容分析：
+条件：
+Hashmap的扩容需要满足两个条件：当前数据存储的数量（即size()）大小必须大于等于阈值；当前加入的数据没有发生hash冲突/碰撞。
+
+在阿里巴巴Java开发手册中，阿里工程师对于初始化hashmap的容量的建议是：
+指定集合初始值大小。
+因为resize自动扩容，扩容多次的话会严重影响性能。
+example：默认为16（实际只能存12个元素），现在要用1024的长度，那么需要扩容7次（11-4）。
+
+
+
