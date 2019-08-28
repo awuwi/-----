@@ -1,32 +1,32 @@
-1.Hashmap结构：哈希表是由数组+链表组成的，数组的默认长度为16 。注意 hashtable的数组的默认长度是11。
+★1.Hashmap结构：哈希表是由数组+链表组成的，数组的默认长度为16 。注意 hashtable的数组的默认长度是11。
 
-2.HashMap的存储--put：
+★2.HashMap的存储--put：
 源码：
 int hash = key.hashCode(); // 这个hashCode方法这里不详述,只要理解每个key的hash是一个固定的int值
 int index = hash %（ Entry[].length-1）;
 table[index] = value;//假定存储链表头结点的数组名为table
 
-分析：（百度面试有人遇到过）
+★分析：（百度面试有人遇到过）
 用table[index]表示通过hash值计算出来的、元素需要存储在数组中的位置。
 先判断该位置上有没有存有Entity,没有的话就创建一个Entity<k,v>对象，在该位置上插入，插入结束；
 如果有的话，通过链表的遍历方式去逐个遍历，通过equals方法将key和已有的key进行比较，看看有没有已经存在的key，有的话用新的value替换老的value；
 如果没有，则在table[index]插入该Entity，把原来在table[index]位置上的Entity赋值给新的 Entity的next，
 也即，新的Entity插入（put）的位置永远是在链表的最前面（百度面试），这样插入结束。 
 
-我的理解：
+★我的理解：
 A.根据hashcode计算出hash值，判断hash值对应的位置有没有Entity，没有的话插入进去；
 B.如果有值了，链表的作用就体现了，通过equals方法判断是不是同一个值，若是，则替换之，value值更新；
 C.若不是，在头结点处，也即数组上，插入该Entity，新的头结点。完成。
 
-注：null key总是存放在Entry[]数组的第一个元素。
+★注：null key总是存放在Entry[]数组的第一个元素。
 
-问：重写equals方法了一定还需要重写hashcode方法吗？
+★问：重写equals方法了一定还需要重写hashcode方法吗？
 答：因为equals相等，那么hashcode值一定相等。
 覆盖了equals方法之后一定要覆盖hashCode方法，原因很简单，比如，String a = new String(“abc”);String b = new String(“abc”);
 如果不覆盖hashCode的话，那么a和b的hashCode就会不同，把这两个类当做key存到HashMap中的话就会出现问题，就会和key的唯一性相矛盾。
-扩展：重写hashcode可以不重写equals方法。
+★扩展：重写hashcode可以不重写equals方法。
 
-3.HashMap的获取--get：
+★3.HashMap的获取--get：
 先定位到数组元素，再遍历该元素处的链表
 
 源码：
@@ -48,14 +48,36 @@ C.若不是，在头结点处，也即数组上，插入该Entity，新的头结
 第四种：通过Iterator 遍历Map.entrySet的key和value: 
 第五种：通过iterator 遍历Map.keySet的key和value: 
 
-HashMap扩容分析：
+★HashMap扩容分析：
 条件：
-Hashmap的扩容需要满足两个条件：当前数据存储的数量（即size()）大小必须大于等于阈值；当前加入的数据没有发生hash冲突/碰撞。
+Hashmap的扩容需要满足两个条件：当前数据存储的数量（即size()）大小必须大于等于阈值；
+                             当前加入的数据没有发生hash冲突/碰撞（错的，只要满足第一个条件，
+                                                               原因嘛，我的理解是，hashmap主要是要尽可能减少冲突，尽量均匀分布，
+                                                               这样长度到阈值额当然就要扩容）。
 
-在阿里巴巴Java开发手册中，阿里工程师对于初始化hashmap的容量的建议是：
+★为什么这里一定要指定容量为2的n次方呢?
+当length总是 2 的n次方时，h& (length-1)运算等价于对length取模，也就是h%length，但是&比%具有更高的效率。
+这样也能使hashcode的取模结果更为平均，尽量的减少冲突
+
+★★在阿里巴巴Java开发手册中，阿里工程师对于初始化hashmap的容量的建议是：
 指定集合初始值大小。
 因为resize自动扩容，扩容多次的话会严重影响性能。
 example：默认为16（实际只能存12个元素），现在要用1024的长度，那么需要扩容7次（11-4）。
 
+HashMap每次put操作是都会检查一遍 size（当前容量）>initailCapacity*loadFactor 是否成立。
+如果不成立则HashMap扩容为以前的两倍（数组扩成两倍），
+★然后重新计算每个元素在数组中的位置，然后再进行存储。★这是一个十分消耗性能的操作。
+★而在hashmap数组扩容之后，最消耗性能的点就出现了：原数组中的数据必须重新计算其在新数组中的位置，并放进去，这就是resize。 
+所以如果能根据业务预估出HashMap的容量，应该在创建的时候指定容量，那么可以避免resize().
 
+★问：
+重新调整HashMap大小存在什么问题吗？（★★★HashMap线程不安全的主要原因：扩容时的条件竞争）
+当重新调整HashMap大小的时候，确实存在条件竞争，因为如果两个线程都发现HashMap需要重新调整大小了，它们会同时试着调整大小。
+在调整大小的过程中，存储在链表中的元素的次序会反过来，因为移动到新的bucket位置的时候，HashMap并不会将元素放在链表的尾部，而是放在头部，
+这是为了避免尾部遍历(tail traversing)。
+如果条件竞争发生了，那么就死循环了。(多线程的环境下不使用HashMap）
+
+★问： 为什么是2的幂
+为什么设计成(n - 1) & hash 这样呢？
+在 n 为 2次幂的情况下时，(n - 1) & hash ≈ hash % n ,因为2进制的运算速度远远高于取模，所以就使用了这种方式，所以要求为2的幂。
 
