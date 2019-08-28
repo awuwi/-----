@@ -1,0 +1,47 @@
+一、HashMap线程不安全
+  在多线程情景下，HashMap产生扩容时由于值会重新分配，而且链表上的数据会反过来，因而多线程操作时可能出现死循环，CPU占用率很快达到100%。
+  
+二、ConcurrentHashMap源码分析--Java8
+概述：
+1、设计首要目的：维护并发可读性（get、迭代相关）；次要目的：使空间消耗比HashMap相同或更好，且支持多线程高效率的初始插入（empty table）。
+2、HashTable线程安全，但采用synchronized，多线程下效率低下。线程1put时，线程2无法put或get。
+
+实现原理：
+锁分离：（读写锁）
+在HashMap的基础上，将数据分段存储，ConcurrentHashMap由多个Segment组成，每个Segment都有把锁。Segment下包含很多Node，也就是我们的键值对了。
+如果还停留在锁分离、Segment，那已经out了。
+Segment虽保留，但已经简化属性，仅仅是为了兼容旧版本。
+
+CAS算法：
+unsafe.compareAndSwapInt(this, valueOffset, expect, update);  CAS(Compare And Swap)，
+意思是如果valueOffset位置包含的值与expect值相同，则更新valueOffset位置的值为update，并返回true，否则不更新，返回false。
+
+相同点：
+与Java8的HashMap有相通之处，底层依然由“数组”+链表+红黑树；
+
+
+Java8中，大量运用CAS进行变量、属性的无锁修改，大大提高性能。
+
+CAS算法：
+这个方法是利用一个CAS算法实现无锁化的修改值的操作，他可以大大降低锁代理的性能消耗。这个算法的基本思想就是不断地去比较当前内存中的变量值与你指定的
+一个变量值是否相等，如果相等，则接受你指定的修改的值，否则拒绝你的操作。因为当前线程中的值已经不是最新的值，你的修改很可能会覆盖掉其他线程修改的结果
+。这一点与乐观锁，SVN的思想是比较类似的。
+
+不同点：
+底层结构存放的是TreeBin对象，而不是TreeNode对象；
+
+☆☆☆★CAS作为知名无锁算法，那ConcurrentHashMap就没用锁了么？当然不是，hash值相同的链表的头结点还是会synchronized上锁。 
+
+static final int TREEIFY_THRESHOLD = 8; // 链表转树阀值，大于8时
+
+static final int UNTREEIFY_THRESHOLD = 6; //树转链表阀值，小于等于6
+（tranfer时，lc、hc=0两个计数器分别++记录原bin、新binTreeNode数量，<=UNTREEIFY_THRESHOLD 则untreeify(lo)）。
+【仅在扩容tranfer时才可能树转链表】（tranfer函数用来转移原位置到新位置）
+
+TreeNode
+// 和HashMap相比，这里的TreeNode相当简洁；ConcurrentHashMap链表转树时，并不会直接转，
+正如注释（Nodes for use in TreeBins）所说，只是把这些节点包装成TreeNode放到TreeBin中，再由TreeBin来转化红黑树。
+
+★★★★★遍历到ForwardingNode节点((fh = f.hash) == MOVED)，说明此节点被处理过了，直接跳过。这是控制并发扩容的★核心 。
+由于给节点上了锁，只允许当前线程完成此节点的操作，处理完毕后，将对应值设为ForwardingNode（fwd），其他线程看到forward，直接向后遍历。
+如此便完成了多线程的复制工作，也解决了线程安全问题。
