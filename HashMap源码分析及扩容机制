@@ -24,7 +24,8 @@ C.若不是，在头结点处，也即数组上，插入该Entity，新的头结
 答：因为equals相等，那么hashcode值一定相等。
 覆盖了equals方法之后一定要覆盖hashCode方法，原因很简单，比如，String a = new String(“abc”);String b = new String(“abc”);
 如果不覆盖hashCode的话，那么a和b的hashCode就会不同，把这两个类当做key存到HashMap中的话就会出现问题，就会和key的唯一性相矛盾。
-★扩展：重写hashcode可以不重写equals方法。
+★扩展：重写hashcode也要重写equals方法。 
+  理解：Map.get()方法，先计算key的hashcode，在这个位置有多个数，需要equals来判断。
 
 ★3.HashMap的获取--get：
 先定位到数组元素，再遍历该元素处的链表
