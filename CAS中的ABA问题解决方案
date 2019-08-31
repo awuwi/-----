@@ -1,0 +1,61 @@
+1、什么是ABA问题
+https://blog.csdn.net/bjweimengshu/article/details/79000506
+首先看一看AtomicInteger当中常用的自增方法 incrementAndGet：
+
+public final int incrementAndGet() {
+for (;;) {
+int current = get();
+int next = current + 1;
+if (compareAndSet(current, next))
+return next;
+    }
+}
+private volatile int value;
+public final int get() {
+return value;
+}
+
+这段代码是一个无限循环，也就是CAS的自旋。循环体当中做了三件事：
+1.获取当前值。
+2.当前值+1，计算出目标值。
+3.进行CAS操作，如果成功则跳出循环，如果失败则重复上述步骤。
+
+这里需要注意的重点是 get 方法，这个方法的作用是获取变量的当前值。
+如何保证获得的当前值是内存中的最新值呢？很简单，用volatile关键字来保证。
+
+接下来看一看compareAndSet方法的实现，以及方法所依赖对象的来历：
+
+compareAndSet方法的实现很简单，只有一行代码。这里涉及到两个重要的对象，一个是unsafe，一个是valueOffset。
+
+什么是unsafe呢？Java语言不像C，C++那样可以直接访问底层操作系统，但是JVM为我们提供了一个后门，这个后门就是unsafe。
+★unsafe为我们提供了硬件级别的原子操作。
+
+CAS机制当中使用了3个基本操作数：内存地址V，旧的预期值A，要修改的新值B。
+而unsafe的compareAndSwapInt方法参数包括了这三个基本元素：valueOffset参数代表了V，expect参数代表了A，update参数代表了B。
+正是unsafe的compareAndSwapInt方法保证了Compare和Swap操作之间的原子性操作。
+
+这个过程中，线程2获取到的变量值A是一个旧值，尽管和当前的实际值相同，但内存地址V中的变量已经经历了A->B->A的改变。
+
+当我们举一个提款机的例子。假设有一个遵循CAS原理的提款机，小灰有100元存款，要用这个提款机来提款50元。
+
+
+由于提款机硬件出了点小问题，小灰的提款操作被同时提交两次，开启了两个线程，两个线程都是获取当前值100元，要更新成50元。
+
+理想情况下，应该一个线程更新成功，另一个线程更新失败，小灰的存款只被扣一次。
+
+2、CAS中的ABA问题解决方案
+★在Java当中，AtomicStampedReference类就实现了用版本号做比较的CAS机制。
+
+
+★总结
+1. Java语言CAS底层如何实现？
+
+★利用unsafe提供了原子性操作方法。
+
+
+
+★2. 什么是ABA问题？怎么解决？
+
+当一个值从A更新成B，又更新会A，普通CAS机制会误判通过检测。
+
+利用版本号比较可以有效解决ABA问题。
